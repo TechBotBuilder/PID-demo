@@ -1,12 +1,7 @@
-/*
-We seem to have problem with atan fxn: it will switch signs sometimes, while keeping approx same abs value of degrees.
-NO MORE!
-*/
 
 #include <iostream>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-/*#include "SerialClass.h"*/
 #include <stdio.h>
 #include <tchar.h>
 #include <string>
@@ -17,7 +12,6 @@ NO MORE!
 #include <chrono>         // std::chrono::system_clock
 #include <ctime>          // std::time_t, std::tm, std::localtime, std::mktime
 
-//#include "Serial.h"
 #include "nxt.h"
 
 #include <fstream>
@@ -26,18 +20,6 @@ using namespace std::chrono;
 using namespace cv;
 using namespace std;
 
-//#define M_PI 3.1415926535
-
-
-/*template< typename T >
-std::string int_to_hex( T i )
-{
-  std::stringstream stream;
-  stream << "0x"
-         << std::setfill ('0') << std::setw(sizeof(T)*2)
-         << std::hex << i;
-  return stream.str();
-}*/
 
 //TrungTN: http://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c
 ///Returns dd-mm-yy.hh-mm-ss
@@ -48,7 +30,6 @@ const std::string currentDateTime() {
     tstruct = *localtime(&now);
     // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
     // for more information about date/time format
-    //strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
     strftime(buf, sizeof(buf), "%d-%m-%y.%H-%M-%S", &tstruct);
 
     return buf;
@@ -100,19 +81,6 @@ const std::string currentDateTime() {
     }
     data_file<<"Time\tDegree Error\tPID Output\tP Term\tI Term\tD Term\tLeft Motor Output\tRight Motor Output\n";
 
-    /*int nxt_port = 4;
-    CSerial serial;
-    if (serial.Open(nxt_port, 9600))
-        cout <<"Port opened successfully";
-    else
-        cout << "Failed to open port!";*/
-    /*namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"*/
-
-/*Serial* SP = new Serial("\\\\.\\COM10");
-if ( !(SP->IsConnected())) {
-    printf("error connecting");
-}*/
-
  const double M_PI = 3.14159265358979323846;
  int ellipse_dialator=5;
  int rLowH = 159; int rHighH=238; int rLowS=91; int rHighS=255;int rLowV=26;int rHighV=128;
@@ -140,22 +108,16 @@ if ( !(SP->IsConnected())) {
 
  float elapsed_time=0;
 
-/*  int iLowH = 0;
- int iHighH = 179;
-  int iLowS = 0;
- int iHighS = 255;
-
-  int iLowV = 0;
- int iHighV = 255;*/
-
  namedWindow("Control", CV_WINDOW_FREERATIO); //create a window called "Control"
  //Create trackbars in "Control" window
  cvCreateTrackbar("Deg P Gain", "Control", &degree_p_coefficient, 400);
  cvCreateTrackbar("Deg I Gain", "Control", &degree_i_coefficient, 400);
  cvCreateTrackbar("Deg D Gain", "Control", &degree_d_coefficient, 400);
- //cvCreateTrackbar("Dis P Gain", "Control", &distance_p_coefficient, 400);
- //cvCreateTrackbar("Dis I Gain", "Control", &distance_i_coefficient, 400);
- //cvCreateTrackbar("Dis D Gain", "Control", &distance_d_coefficient, 400);
+ /*cvCreateTrackbar("Dis P Gain", "Control", &distance_p_coefficient, 400);
+ cvCreateTrackbar("Dis I Gain", "Control", &distance_i_coefficient, 400);
+ cvCreateTrackbar("Dis D Gain", "Control", &distance_d_coefficient, 400);*/
+
+ //enable to find the right color values
  /*cvCreateTrackbar("rHueL", "Control", &rLowH, 255);
  cvCreateTrackbar("rHueH", "Control", &rHighH, 255);
  cvCreateTrackbar("rValL", "Control", &rLowV, 255);
@@ -255,24 +217,16 @@ if ( !(SP->IsConnected())) {
     float dis_p_c = distance_p_coefficient / 100.0;
     float dis_i_c = distance_i_coefficient / 100.0;
     float dis_d_c = distance_d_coefficient / 100.0;
-    //Formula: output = kp*e + ki*sum(e) + kd*recentslope(e)
     center_x = (bLastX + yLastX)/2;
     center_y = (bLastY + yLastY)/2;
-    //float yonline =  ( ( (rLastY - center_y) / (rLastX - center_x) ) * (yLastX - center_x) ) + center_y;
-    //double degrees = atan2((double)(yonline - yLastY), (double)(yLastX - center_x)) * 180/M_PI;
+
     //Much thinking and some trig help:http://keisan.casio.com/exec/system/1223522781; http://stackoverflow.com/questions/3162643/proper-trigonometry-for-rotating-a-point-around-the-origin
-    float theta = atan2f( (rLastY - center_y), (rLastX - center_x) );//had problem here because was converting to degrees, but sinf/cosf wanted radian :D
+    float theta = atan2f( (rLastY - center_y), (rLastX - center_x) );// sinf/cosf wants radian
     float transformed_x = (yLastX - center_x)*cosf(theta) + (yLastY - center_y)*sinf(theta);
     float transformed_y = -(yLastX - center_x)*sinf(theta) + (yLastY - center_y)*cosf(theta);
+
+    //Formula: output = kp*e + ki*sum(e) + kd*recentslope(e)
     degree_current_error = atan2f( transformed_y, transformed_x ) * 180 / M_PI;
-    //degree_current_error = degrees;
-    //if (degrees <= 180){ //turn Right
-    //    degree_current_error = degrees;
-    //    //degree_d_term = (degree_current_error - degree_previous_error)/cycletime;
-    //}else if (degrees > 180){ //turn Left
-    //    degrees = degrees - 360;
-    //    degree_current_error = degrees;
-    //} Redundant, and can be bad b/c of float accuracy, ...: already, atan2 is range -180 to 180
     degree_p_term = deg_p_c * degree_current_error;
     degree_i_collected = degree_i_collected + (degree_current_error / cycletime);
     degree_i_term = deg_i_c * degree_i_collected;
